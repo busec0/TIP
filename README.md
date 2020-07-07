@@ -1,3 +1,7 @@
+# Exercises 
+
+Solved Exercise 1 (type checker) from https://github.com/cs-au-dk/TIP/wiki/TIP-exercises 
+
 # TIP
 
 TIP is a tiny imperative programming language aimed at teaching the

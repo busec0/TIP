@@ -67,28 +67,44 @@ class TypeAnalysis(program: AProgram)(implicit declData: DeclarationData) extend
   def visit(node: AstNode, arg: Null): Unit = {
     log.verb(s"Visiting ${node.getClass.getSimpleName} at ${node.loc}")
     node match {
-      case program: AProgram => ??? // <--- Complete here
-      case _: ANumber => ??? // <--- Complete here
-      case _: AInput => ??? // <--- Complete here
-      case iff: AIfStmt => ??? // <--- Complete here
-      case out: AOutputStmt => ??? // <--- Complete here
-      case whl: AWhileStmt => ??? // <--- Complete here
-      case ass: AAssignStmt => ??? // <--- Complete here
+      case program: AProgram => ; // ???
+      case _: ANumber => unify(node, TipInt())
+      case _: AInput => unify(node, TipInt())
+      case iff: AIfStmt => unify(iff.guard, TipInt())
+      case out: AOutputStmt => unify(out.value, TipInt())
+      case whl: AWhileStmt => unify(whl.guard, TipInt())
+      case ass: AAssignStmt =>
+          ass match {
+            case AAssignStmt(AUnaryOp(DerefOp, target, _) , right, _)
+                    => unify(target, TipRef(right));
+            case AAssignStmt(_, _, _) =>
+              unify(ass.left, ass.right)
+          }
       case bin: ABinaryOp =>
         bin.operator match {
-          case Eqq => ??? // <--- Complete here
-          case _ => ??? // <--- Complete here
+          case Eqq => unify(bin.left, bin.right);
+                      unify(node, TipInt());
+          case _ =>  unify(bin.left, bin.right)
+                     unify(node, TipInt())
         }
       case un: AUnaryOp =>
         un.operator match {
-          case RefOp => ??? // <--- Complete here
-          case DerefOp => ??? // <--- Complete here
+          case RefOp => unify(node, TipRef(un.target) )
+          case DerefOp => unify(un.target, TipRef(node))
         }
-      case alloc: AAlloc => ??? // <--- Complete here
-      case _: ANull => ??? // <--- Complete here
-      case fun: AFunDeclaration => ??? // <--- Complete here
-      case call: ACallFuncExpr => ??? // <--- Complete here
-      case _: AReturnStmt =>
+      case alloc: AAlloc => unify(node, TipRef(alloc.exp))
+      case _: ANull => unify(node, TipRef(TipAlpha(node)))
+      case fun: AFunDeclaration =>
+        val tipVarParams = fun.params.map(TipVar(_))
+        val returnStmt = fun.stmts.body.last.asInstanceOf[AReturnStmt];
+        unify(fun, TipFunction(tipVarParams, returnStmt))
+            // OK
+      case call: ACallFuncExpr =>
+        val varArgs = call.args.map(TipType.ast2typevar(_));
+        val fction = TipFunction(varArgs, call);
+        unify(call.targetFun, fction);
+      case retStmt: AReturnStmt =>
+        unify(node, retStmt.value)
       case rec: ARecord =>
         val fieldmap = rec.fields.foldLeft(Map[String, Term[TipType]]()) { (a, b) =>
           a + (b.field -> b.exp)
